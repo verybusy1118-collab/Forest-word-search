@@ -136,14 +136,14 @@
         /* ===== 遊戲容器 ===== */
         .game-container {
             display: none; gap: clamp(10px, 2vw, 30px);
-            width: 100%; max-width: 1050px;
+            width: 100%; max-width: 1200px;
             justify-content: center; flex-wrap: wrap;
             z-index: 1; padding: 8px clamp(5px,2vw,20px) 30px;
             transition: opacity 1s;
         }
         .left-panel {
             display: flex; flex-direction: column; align-items: center;
-            width: 100%; max-width: 540px;
+            width: 100%; max-width: 650px;
         }
         .right-panel {
             background-color: rgba(255,253,249,0.95);
@@ -168,7 +168,7 @@
             border-radius: clamp(8px, 1.5vw, 14px);
             user-select: none; touch-action: none;
             box-shadow: 0 8px 20px rgba(106,141,115,0.15);
-            width: 100%; max-width: 520px;
+            width: 100%; max-width: 620px;
         }
         .cell {
             aspect-ratio: 1; width: 100%;
@@ -319,11 +319,11 @@
 
         /* ===== 電腦版（>768px）左右並排 ===== */
         @media (min-width: 769px) {
-            .game-container { flex-wrap: nowrap; }
-            .left-panel { flex-shrink: 0; width: auto; max-width: none; }
-            .right-panel { min-width: 300px; }
-            .cell { font-size: 1.4rem; }
-            .grid { max-width: 520px; gap: 5px; padding: 10px; }
+            .game-container { flex-wrap: nowrap; max-width: 1200px; }
+            .left-panel { flex-shrink: 0; width: auto; max-width: none; flex: 1.2; }
+            .right-panel { min-width: 300px; flex: 1; }
+            .cell { font-size: 1.6rem; }
+            .grid { max-width: 650px; gap: 6px; padding: 12px; }
         }
     </style>
 </head>
@@ -585,8 +585,6 @@
             document.getElementById(`clue-${m.id}`).classList.add('found');
             showMsg(`太棒了！找到「${m.target}」(+${pts}分)`);
             updateStats();
-            document.getElementById('main-body').classList.add('shake-screen');
-            setTimeout(()=>document.getElementById('main-body').classList.remove('shake-screen'),400);
             playGood();
             if(foundWords.size===wordsData.length) setTimeout(endGame,1000);
         } else { showX(); showMsg("不對喔，再找找看！"); }
