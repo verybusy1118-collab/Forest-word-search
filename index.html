@@ -344,10 +344,13 @@
         }
     </script>
 
+    <audio id="bgm" loop src="bgm.mp3"></audio>
+
     <div class="stats-bar" id="stats-bar">
         <div class="stat-item" id="timer-display">⏱️ 00:00</div>
         <div class="stat-item" id="score-display">🏆 0 分</div>
         <div class="stat-item" id="progress-display">🎯 0/11</div>
+        <div class="stat-item" id="music-toggle" style="cursor:pointer;" onclick="toggleBgm()">🎵 開啟</div>
     </div>
 
     <h1 id="main-title">🌳 森之尋字 🌳</h1>
@@ -467,6 +470,28 @@
         document.getElementById('game-container').style.display='flex';
         document.getElementById('stats-bar').style.display='flex';
         aud(); initGame();
+        
+        // 嘗試播放背景音樂
+        let bgm = document.getElementById('bgm');
+        bgm.volume = 0.3; // 音量 30%
+        bgm.play().then(() => {
+            document.getElementById('music-toggle').textContent = "🎵 關閉";
+        }).catch(err => {
+            console.log("瀏覽器阻擋自動播放，或找不到 bgm.mp3", err);
+            document.getElementById('music-toggle').textContent = "🎵 開啟";
+        });
+    }
+
+    function toggleBgm() {
+        let bgm = document.getElementById('bgm');
+        let btn = document.getElementById('music-toggle');
+        if (bgm.paused) {
+            bgm.play();
+            btn.textContent = "🎵 關閉";
+        } else {
+            bgm.pause();
+            btn.textContent = "🎵 開啟";
+        }
     }
 
     function initGame(){
