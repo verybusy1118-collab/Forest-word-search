@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>森之尋字 - 探索遊戲</title>
+    <style>
+        :root {
+            --primary: #6A8D73; 
+            --secondary: #C3D8C3; 
+            --bg-top: #FFFBF0; 
+            --bg-bottom: #E2EBD5; 
+            --text-color: #53504A; 
+            --accent: #D77A61; 
+            --highlight: #FDE0AA; 
+            --grid-bg: rgba(255, 255, 255, 0.95);
+            --wood: #A37C58; 
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--text-color);
+            background: linear-gradient(135deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .shake-screen { animation: shake 0.4s; }
+
+        #cross-mark {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 15rem;
+            color: rgba(230, 50, 50, 0.85);
+            z-index: 200;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        #cross-mark.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .leaf {
+            position: absolute;
+            width: 15px; height: 15px;
+            background-color: #B5A17A;
+            border-radius: 0 10px 0 10px;
+            opacity: 0.2;
+            animation: fall linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-50px) rotate(0deg) scale(0.5); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(100vh) rotate(360deg) scale(1.2); opacity: 0; }
+        }
+
+        h1 {
+            color: var(--primary);
+            text-align: center;
+            margin-top: 30px; margin-bottom: 5px;
+            font-size: 2.8rem;
+            text-shadow: 1px 1px 3px rgba(106, 141, 115, 0.2);
+            z-index: 1;
+            letter-spacing: 2px;
+            transition: opacity 1s;
+        }
+
+        .subtitle {
+            color: var(--wood);
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            z-index: 1;
+            transition: opacity 1s;
+        }
+
+        #start-screen {
+            background: #FFFDF9;
+            padding: 40px 50px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(106, 141, 115, 0.15);
+            text-align: center;
+            z-index: 10;
+            margin-top: 8vh;
+        }
+        #start-screen input {
+            padding: 12px 20px; font-size: 1.2rem;
+            border: 2px solid var(--secondary);
+            border-radius: 10px; margin-bottom: 25px;
+            outline: none; width: 200px;
+            color: var(--text-color); background-color: #FAFAFA;
+        }
+        #start-screen input:focus {
+            border-color: var(--primary); background-color: #FFF;
+        }
+        #start-screen button {
+            background-color: var(--primary); color: white;
+            border: none; padding: 12px 30px; font-size: 1.2rem;
+            border-radius: 30px; cursor: pointer;
+            transition: all 0.3s; display: block; margin: 0 auto;
+            box-shadow: 0 4px 10px rgba(106, 141, 115, 0.3);
+        }
+        #start-screen button:hover {
+            background-color: #55725C; transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(106, 141, 115, 0.4);
+        }
+
+        /* ===== 頂部狀態列 ===== */
+        .stats-bar {
+            display: none;
+            width: 100%;
+            justify-content: center;
+            gap: 40px;
+            background: linear-gradient(135deg, rgba(106,141,115,0.95), rgba(85,114,92,0.95));
+            color: white;
+            padding: 14px 30px;
+            box-sizing: border-box;
+            font-weight: bold;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            z-index: 90;
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(8px);
+            border-bottom: 2px solid rgba(255,255,255,0.15);
+        }
+        .stats-bar .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 600px) {
+            .stats-bar {
+                gap: 15px;
+                font-size: 1rem;
+                padding: 10px 15px;
+            }
+        }
+
+        .game-container {
+            display: none; 
+            gap: 35px;
+            max-width: 1050px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+            z-index: 1;
+            padding: 10px 20px 40px 20px;
+            box-sizing: border-box;
+            transition: opacity 1s;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .right-panel {
+            background-color: rgba(255, 253, 249, 0.95);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(106, 141, 115, 0.1);
+            min-width: 320px;
+            max-width: 450px;
+            flex: 1;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
+            background-color: var(--secondary);
+            padding: 12px;
+            border-radius: 14px;
+            user-select: none;
+            touch-action: none;
+            box-shadow: 0 8px 20px rgba(106, 141, 115, 0.15);
+        }
+
+        .cell {
+            width: 46px; height: 46px;
+            background-color: var(--grid-bg);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem; font-weight: bold;
+            border-radius: 8px; cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+            color: #444;
+        }
+        .cell:hover { transform: scale(1.05); background-color: var(--highlight); }
+        .cell.selected {
+            background-color: var(--highlight); color: var(--accent);
+            box-shadow: inset 0 0 8px rgba(215, 122, 97, 0.2);
+            transform: scale(0.95);
+        }
+        .cell.found { background-color: var(--primary); color: white; cursor: default; }
+        .cell.found:hover { transform: none; }
+
+        @keyframes pulse-highlight {
+            0% { background-color: var(--grid-bg); box-shadow: 0 0 0px var(--accent); }
+            50% { background-color: var(--highlight); box-shadow: 0 0 12px var(--accent); transform: scale(1.1); }
+            100% { background-color: var(--grid-bg); box-shadow: 0 0 0px var(--accent); }
+        }
+        .cell.locate-hint {
+            animation: pulse-highlight 1.5s infinite;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .clue-list {
+            list-style: none; padding: 0; margin: 0;
+            max-height: 550px; overflow-y: auto; padding-right: 5px;
+        }
+        .clue-list::-webkit-scrollbar { width: 6px; }
+        .clue-list::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }
+
+        .clue-item {
+            display: flex; flex-direction: column;
+            padding: 12px 10px;
+            border-bottom: 1px dashed var(--secondary);
+            transition: all 0.3s;
+        }
+        .clue-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 5px;
+        }
+        .clue-text { font-size: 1.15rem; font-weight: bold; color: var(--wood); }
+        .clue-actions { display: flex; gap: 6px; }
+
+        .clue-item.found { opacity: 0.4; background-color: transparent; }
+        .clue-item.found .clue-text { text-decoration: line-through; color: #999; }
+        .clue-item.found .clue-actions { display: none; }
+
+        .btn-poetry, .btn-locate {
+            border: none; padding: 5px 10px; border-radius: 12px;
+            cursor: pointer; font-size: 0.85rem; font-weight: bold;
+            transition: all 0.2s; color: #fff;
+        }
+        .btn-poetry { background-color: var(--primary); }
+        .btn-poetry:hover { background-color: #55725C; transform: translateY(-1px); }
+        .btn-locate { background-color: var(--wood); }
+        .btn-locate:hover { background-color: #8C6646; transform: translateY(-1px); }
+        .btn-poetry:disabled, .btn-locate:disabled {
+            background-color: #D1D1D1; cursor: not-allowed; color: #888; transform: none;
+        }
+
+        .hint-text {
+            margin-top: 8px; font-size: 0.95rem; color: var(--primary);
+            display: none; background: #F1F6F1;
+            padding: 8px 12px; border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        .hint-text.visible { display: block; }
+
+        .status-msg {
+            margin-top: 20px; font-size: 1.2rem; text-align: center;
+            height: 30px; color: var(--accent); font-weight: bold;
+            background-color: rgba(255,255,255,0.85);
+            padding: 6px 20px; border-radius: 20px;
+            opacity: 0; transition: opacity 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .status-msg.show { opacity: 1; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(62, 74, 61, 0.85);
+            display: none; justify-content: center; align-items: center;
+            z-index: 100; transition: opacity 1s;
+        }
+
+        .certificate {
+            background-color: #FFFDF7;
+            padding: 40px 50px; border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+            max-width: 550px; width: 90%; text-align: center;
+            border: 8px solid var(--wood); position: relative;
+        }
+        .cert-title {
+            color: var(--wood); font-size: 1.9rem;
+            margin-bottom: 20px; font-weight: bold; letter-spacing: 1px;
+        }
+        .cert-divider { border-top: 2px dashed #DCCDBA; margin: 20px 0; }
+        .cert-content {
+            font-size: 1.15rem; line-height: 2;
+            text-align: left; margin-bottom: 25px; color: #554E44;
+        }
+        .cert-footer { font-size: 0.95rem; color: #887B6C; margin-top: 20px; font-weight: bold; }
+        .cert-action-btns {
+            display: flex; justify-content: center; gap: 15px; margin-top: 25px;
+        }
+        .btn-cert {
+            color: white; border: none; padding: 12px 25px;
+            border-radius: 30px; font-size: 1.1rem; cursor: pointer;
+            transition: all 0.3s; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .btn-copy { background-color: var(--wood); }
+        .btn-copy:hover { background-color: #8C6646; transform: translateY(-2px); }
+        .btn-close { background-color: var(--primary); }
+        .btn-close:hover { background-color: #55725C; transform: translateY(-2px); }
+
+        #zongzi-modal {
+            background-color: rgba(255, 251, 240, 0.95);
+            flex-direction: column; overflow: hidden; text-align: center;
+        }
+        .zongzi-title {
+            color: #2E7D32; font-size: 3rem; font-weight: bold;
+            z-index: 10; text-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            animation: pop-in 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .zongzi-item {
+            position: absolute; font-size: 3rem; user-select: none;
+            animation: bounce-fall linear forwards;
+            filter: drop-shadow(0px 5px 3px rgba(0,0,0,0.3));
+        }
+        @keyframes bounce-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            50% { transform: translateY(50vh) rotate(180deg); }
+            80% { transform: translateY(80vh) rotate(270deg); }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0.5; }
+        }
+        .cute-zongzi { width: 80px; height: 80px; }
+
+        #final-farewell {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem; color: var(--primary); font-weight: bold;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            animation: pop-in 1s; text-align: center;
+        }
+    </style>
+</head>
+<body id="main-body">
+
+    <div id="cross-mark">❌</div>
+
+    <script>
+        const leafColors = ['#A37C58', '#6A8D73', '#C3D8C3', '#D77A61'];
+        for (let i = 0; i < 20; i++) {
+            let leaf = document.createElement('div');
+            leaf.className = 'leaf';
+            leaf.style.left = Math.random() * 100 + 'vw';
+            leaf.style.animationDuration = (Math.random() * 8 + 6) + 's';
+            leaf.style.animationDelay = (Math.random() * 6) + 's';
+            leaf.style.backgroundColor = leafColors[Math.floor(Math.random() * leafColors.length)];
+            document.body.appendChild(leaf);
+        }
+    </script>
+
+    <!-- 頂部狀態列（遊戲開始後才顯示） -->
+    <div class="stats-bar" id="stats-bar">
+        <div class="stat-item" id="timer-display">⏱️ 00:00</div>
+        <div class="stat-item" id="score-display">🏆 積分: 0</div>
+        <div class="stat-item" id="progress-display">🎯 進度: 0/11</div>
+    </div>
+
+    <h1 id="main-title">🌳 森之尋字 🌳</h1>
+    
+    <div id="start-screen">
+        <h2 style="color: var(--primary); margin-top:0; letter-spacing: 1px;">歡迎來到森林迷宮</h2>
+        <p style="color: #666; margin-bottom: 25px;">請輸入您的名字以開始挑戰</p>
+        <input type="text" id="player-name" placeholder="您的姓名" maxlength="15" onkeypress="if(event.key === 'Enter') startGame()">
+        <button onclick="startGame()">開始探索</button>
+    </div>
+
+    <div class="subtitle" id="game-subtitle" style="display:none;">
+        找到提示對應的夥伴！拖曳或點擊選取字詞<br>
+        <span style="font-size: 0.95rem; font-weight: normal; margin-top: 5px; display: inline-block;">(自立自強 +10分 | 詩詞提示 +5分 | <span id="locate-text">老花眼定位 +2分 (限 4 次)</span>)</span>
+    </div>
+
+    <div class="game-container" id="game-container">
+        <div class="left-panel">
+            <div class="grid" id="grid"></div>
+            <div class="status-msg" id="status-msg"></div>
+        </div>
+        <div class="right-panel">
+            <h2 style="margin-top:0; color: var(--wood); text-align:center; border-bottom: 2px solid var(--secondary); padding-bottom:15px; letter-spacing: 1px;">夥伴線索</h2>
+            <ul class="clue-list" id="clue-list"></ul>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="cert-modal">
+        <div class="certificate">
+            <div class="cert-title">🌸【森之尋字 ‧ 探索合格成績證明】🌸</div>
+            <div class="cert-divider"></div>
+            <div class="cert-content" id="cert-content"></div>
+            <div class="cert-divider"></div>
+            <div class="cert-footer"><div>發證單位：小綜森之尋字療癒委員會</div></div>
+            <div class="cert-action-btns">
+                <button class="btn-cert btn-copy" id="copy-btn" onclick="copyCertificate()">📋 一鍵複製證書</button>
+                <button class="btn-cert btn-close" onclick="showZongziModal()">感謝參與 🌳</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="zongzi-modal" style="display:none;">
+        <div class="zongzi-title">歡迎來到中小綜聯席<br>預祝端午節快樂！🐉</div>
+        <div id="zongzi-container" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div>
+    </div>
+
+    <div id="final-farewell">🎉 挑戰圓滿結束<br>感謝您的參與！ 🎉</div>
+
+    <script>
+        const wordsData = [
+            { id: 0, target: "英瑞", clue: "小狐狸", hint: "英華映祥瑞" },
+            { id: 1, target: "岩勳", clue: "師奶殺手", hint: "岩峰立功勳" },
+            { id: 2, target: "曼寧", clue: "咖啡花草茶", hint: "曼舞伴安寧" },
+            { id: 3, target: "麗碧", clue: "自行車師姐", hint: "麗影映碧波" },
+            { id: 4, target: "以竣", clue: "汪汪隊", hint: "以心成竣事" },
+            { id: 5, target: "尚儒", clue: "未來校長", hint: "尚德若儒風" },
+            { id: 6, target: "婷媛", clue: "小菊花", hint: "婷婷如玉媛" },
+            { id: 7, target: "莉芬", clue: "粒粒皆辛苦", hint: "茉莉送清芬" },
+            { id: 8, target: "桂蓮", clue: "哆啦A夢", hint: "桂香伴蓮影" },
+            { id: 9, target: "音汝", clue: "臭臉王", hint: "清音寄予汝" },
+            { id: 10, target: "凱賓", clue: "小兵立大功", hint: "凱風吹嘉賓" }
+        ];
+
+        const traps = ["永安", "貞瑩", "明珊", "暄宜"];
+        const distractorsPool = "森林迷宮測試遊戲風景美麗鳥語花香清風徐來陽光普照快樂學習療癒身心舒壓放鬆";
+
+        const gridSize = 10;
+        let grid = [];
+        let selectedCells = [];
+        let foundWords = new Set();
+        let score = 0;
+        let maxScore = wordsData.length * 10;
+        let wordScores = {};
+        let playerName = "";
+        let startTime, timerInterval;
+        let finalMins = "00", finalSecs = "00", finalEval = "";
+        let audioCtx;
+        const MAX_LOCATE_HINTS = 4;
+        let locateHintUses = 0;
+
+        function getAudioCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        }
+
+        function playGoodSound() {
+            try {
+                let ctx = getAudioCtx();
+                let osc = ctx.createOscillator();
+                let gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.4, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + 0.3);
+                if ('speechSynthesis' in window) {
+                    let msg = new SpeechSynthesisUtterance("Good!");
+                    msg.lang = "en-US"; msg.pitch = 1.5; msg.rate = 1.2; msg.volume = 0.6;
+                    window.speechSynthesis.speak(msg);
+                }
+            } catch(e) {}
+        }
+
+        function playErrorSound() {
+            try {
+                let ctx = getAudioCtx();
+                let osc = ctx.createOscillator();
+                let gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + 0.2);
+            } catch(e) {}
+        }
+
+        function showCrossMark() {
+            playErrorSound();
+            const cross = document.getElementById('cross-mark');
+            cross.classList.add('show');
+            setTimeout(() => { cross.classList.remove('show'); }, 600);
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('player-name').value.trim();
+            if (!nameInput) { alert("請輸入您的姓名喔！"); return; }
+            playerName = nameInput;
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-subtitle').style.display = 'block';
+            document.getElementById('game-container').style.display = 'flex';
+            document.getElementById('stats-bar').style.display = 'flex';
+            getAudioCtx();
+            initGame();
+        }
+
+        function initGame() {
+            locateHintUses = 0;
+            document.getElementById('locate-text').textContent = '老花眼定位 +2分 (限 4 次)';
+            wordsData.forEach(w => wordScores[w.id] = 10);
+            grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(''));
+            for (let wd of wordsData) placeWord(wd.target, wd.id);
+            for (let trap of traps) placeWord(trap, -1);
+            for (let r = 0; r < gridSize; r++)
+                for (let c = 0; c < gridSize; c++)
+                    if (grid[r][c] === '') grid[r][c] = distractorsPool[Math.floor(Math.random() * distractorsPool.length)];
+            renderGrid(); renderClues();
+            startTime = Date.now();
+            startTimer(); updateStats();
+        }
+
+        let firstCharCoords = {};
+
+        function placeWord(word, wordId) {
+            let placed = false, attempts = 0;
+            while (!placed && attempts < 200) {
+                let dir = Math.random() < 0.5 ? 'H' : 'V';
+                let actualWord = Math.random() < 0.3 ? word.split('').reverse().join('') : word;
+                let r = Math.floor(Math.random() * gridSize);
+                let c = Math.floor(Math.random() * gridSize);
+                if (dir === 'H' && c + actualWord.length <= gridSize) {
+                    let canPlace = true;
+                    for (let i = 0; i < actualWord.length; i++)
+                        if (grid[r][c + i] !== '' && grid[r][c + i] !== actualWord[i]) { canPlace = false; break; }
+                    if (canPlace) {
+                        for (let i = 0; i < actualWord.length; i++) grid[r][c + i] = actualWord[i];
+                        if (wordId !== -1) firstCharCoords[wordId] = { r: r, c: (actualWord === word) ? c : c + actualWord.length - 1 };
+                        placed = true;
+                    }
+                } else if (dir === 'V' && r + actualWord.length <= gridSize) {
+                    let canPlace = true;
+                    for (let i = 0; i < actualWord.length; i++)
+                        if (grid[r + i][c] !== '' && grid[r + i][c] !== actualWord[i]) { canPlace = false; break; }
+                    if (canPlace) {
+                        for (let i = 0; i < actualWord.length; i++) grid[r + i][c] = actualWord[i];
+                        if (wordId !== -1) firstCharCoords[wordId] = { r: (actualWord === word) ? r : r + actualWord.length - 1, c: c };
+                        placed = true;
+                    }
+                }
+                attempts++;
+            }
+        }
+
+        function renderGrid() {
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell'; cell.textContent = grid[r][c];
+                    cell.id = `cell-${r}-${c}`; cell.dataset.r = r; cell.dataset.c = c;
+                    cell.addEventListener('mousedown', handleCellClick);
+                    cell.addEventListener('mouseenter', handleCellEnter);
+                    gridEl.appendChild(cell);
+                }
+            }
+            document.addEventListener('mouseup', handleGlobalMouseUp);
+            gridEl.addEventListener('touchstart', (e) => {
+                e.preventDefault(); let touch = e.touches[0];
+                let el = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (el && el.classList.contains('cell')) handleCellClick({ target: el });
+            }, {passive: false});
+            gridEl.addEventListener('touchmove', (e) => {
+                e.preventDefault(); let touch = e.touches[0];
+                let el = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (el && el.classList.contains('cell')) handleCellEnter({ target: el });
+            }, {passive: false});
+            gridEl.addEventListener('touchend', handleGlobalMouseUp);
+        }
+
+        let isDragging = false;
+        function handleCellClick(e) {
+            if (e.target.classList.contains('found')) return;
+            isDragging = true; selectedCells = [e.target]; updateSelectionVisuals();
+        }
+        function handleCellEnter(e) {
+            if (!isDragging || e.target.classList.contains('found')) return;
+            if (selectedCells[selectedCells.length - 1] !== e.target) {
+                const r1 = parseInt(selectedCells[0].dataset.r), c1 = parseInt(selectedCells[0].dataset.c);
+                const r2 = parseInt(e.target.dataset.r), c2 = parseInt(e.target.dataset.c);
+                if ((r1 === r2 || c1 === c2) && !selectedCells.includes(e.target)) selectedCells.push(e.target);
+            }
+            updateSelectionVisuals();
+        }
+        function handleGlobalMouseUp() {
+            if (!isDragging) return;
+            isDragging = false;
+            if (selectedCells.length >= 2) checkSelection();
+            selectedCells.forEach(cell => cell.classList.remove('selected'));
+            selectedCells = [];
+        }
+        function updateSelectionVisuals() {
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+            selectedCells.forEach(c => c.classList.add('selected'));
+        }
+
+        function checkSelection() {
+            let sorted = [...selectedCells].sort((a, b) => {
+                let rDiff = a.dataset.r - b.dataset.r;
+                return rDiff !== 0 ? rDiff : a.dataset.c - b.dataset.c;
+            });
+            let wordStr = sorted.map(c => c.textContent).join('');
+            let wordStrRev = sorted.map(c => c.textContent).reverse().join('');
+
+            if (traps.includes(wordStr) || traps.includes(wordStrRev)) {
+                showCrossMark();
+                showStatus(`「${wordStr}」是誘導陷阱！不要被騙了！`);
+                return;
+            }
+
+            let matchedWd = wordsData.find(wd => (wd.target === wordStr || wd.target === wordStrRev) && !foundWords.has(wd.id));
+            if (matchedWd) {
+                foundWords.add(matchedWd.id);
+                sorted.forEach(c => { c.classList.add('found'); c.classList.remove('locate-hint'); });
+                let points = wordScores[matchedWd.id];
+                score += points;
+                document.getElementById(`clue-${matchedWd.id}`).classList.add('found');
+                showStatus(`太棒了！找到「${matchedWd.target}」(+${points}分)`);
+                updateStats();
+                document.getElementById('main-body').classList.add('shake-screen');
+                setTimeout(() => document.getElementById('main-body').classList.remove('shake-screen'), 400);
+                playGoodSound();
+                if (foundWords.size === wordsData.length) setTimeout(endGame, 1000);
+            } else {
+                showCrossMark();
+                showStatus("不對喔，再找找看！");
+            }
+        }
+
+        function renderClues() {
+            const listEl = document.getElementById('clue-list');
+            listEl.innerHTML = '';
+            wordsData.forEach(wd => {
+                const li = document.createElement('li');
+                li.className = 'clue-item'; li.id = `clue-${wd.id}`;
+                li.innerHTML = `
+                    <div class="clue-header">
+                        <span class="clue-text">${wd.clue}</span>
+                        <div class="clue-actions">
+                            <button class="btn-poetry" id="btn-poetry-${wd.id}" onclick="usePoetryHint(${wd.id})">詩詞 (+5)</button>
+                            <button class="btn-locate" id="btn-locate-${wd.id}" onclick="useLocateHint(${wd.id})">老花 (+2)</button>
+                        </div>
+                    </div>
+                    <div class="hint-text" id="hint-${wd.id}">${wd.hint}</div>`;
+                listEl.appendChild(li);
+            });
+        }
+
+        window.usePoetryHint = function(id) {
+            if (wordScores[id] > 5) wordScores[id] = 5;
+            document.getElementById(`btn-poetry-${id}`).disabled = true;
+            document.getElementById(`btn-poetry-${id}`).textContent = "已用";
+            document.getElementById(`hint-${id}`).classList.add('visible');
+            showStatus("已顯示詩詞提示！這題將改為 +5分");
+        }
+
+        window.useLocateHint = function(id) {
+            if (locateHintUses >= MAX_LOCATE_HINTS) { showStatus("定位次數已用盡囉！"); return; }
+            wordScores[id] = 2;
+            document.getElementById(`btn-locate-${id}`).disabled = true;
+            document.getElementById(`btn-locate-${id}`).textContent = "已定";
+            let coords = firstCharCoords[id];
+            if (coords) {
+                let cell = document.getElementById(`cell-${coords.r}-${coords.c}`);
+                if (cell && !cell.classList.contains('found')) cell.classList.add('locate-hint');
+            }
+            locateHintUses++;
+            let remaining = MAX_LOCATE_HINTS - locateHintUses;
+            document.getElementById('locate-text').textContent = `老花眼定位 +2分 (餘 ${remaining} 次)`;
+            showStatus(`已標記首字！定位還剩 ${remaining} 次`);
+            if (remaining === 0) {
+                document.querySelectorAll('.btn-locate').forEach(btn => {
+                    if (!btn.disabled || btn.textContent !== "已定") { btn.disabled = true; btn.textContent = "用盡"; }
+                });
+            }
+        }
+
+        function showStatus(msg) {
+            const el = document.getElementById('status-msg');
+            el.textContent = msg; el.classList.add('show');
+            setTimeout(() => { if (el.textContent === msg) el.classList.remove('show'); }, 2500);
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                let elapsed = Math.floor((Date.now() - startTime) / 1000);
+                let mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                let secs = String(elapsed % 60).padStart(2, '0');
+                document.getElementById('timer-display').textContent = `⏱️ ${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function updateStats() {
+            document.getElementById('score-display').textContent = `🏆 積分: ${score}`;
+            document.getElementById('progress-display').textContent = `🎯 進度: ${foundWords.size}/${wordsData.length}`;
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            let elapsed = Math.floor((Date.now() - startTime) / 1000);
+            finalMins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            finalSecs = String(elapsed % 60).padStart(2, '0');
+
+            if (score === maxScore) {
+                if (elapsed <= 60) finalEval = "👑 傳說境界！不到一分鐘就滿分破關，擁有神一般的觀察力與直覺！";
+                else if (elapsed <= 120) finalEval = "🔥 絕頂高手！全憑敏銳的眼光與過人的速度找齊夥伴，展現出無與倫比的實力！";
+                else if (elapsed <= 240) finalEval = "🌟 慧眼獨具！不依賴提示，穩健地找出所有夥伴，真是太厲害了！";
+                else finalEval = "🧘 沉穩內斂！以無比的耐心與專注力完成完美挑戰，享受了一場深度的森林療癒！";
+            } else if (score >= 80) {
+                if (elapsed <= 60) finalEval = "⚡ 迅捷如風！靈活運用提示快速通關，在森林裡來去自如！";
+                else if (elapsed <= 120) finalEval = "🦅 鷹眼探員！掌握了極佳的節奏與判斷力，精準抓出大部分的夥伴！";
+                else if (elapsed <= 240) finalEval = "🌿 溫柔好手！善用提示引導完美探索，以剛剛好的節奏突破森林迷宮！";
+                else finalEval = "🍃 悠然自得！不疾不徐地在森林中漫步，細細品味尋找夥伴的樂趣！";
+            } else if (score >= 50) {
+                if (elapsed <= 60) finalEval = "🚀 衝刺達人！速度極快，雖然錯失了幾個夥伴，但活力滿滿！";
+                else if (elapsed <= 120) finalEval = "🧭 森林遊俠！靈活借助詩詞與提示，充滿探險精神！";
+                else if (elapsed <= 240) finalEval = "🌻 潛力新星！善用各種提示穩步前進，完成了森林的考驗，每一次探索都是成長！";
+                else finalEval = "🏕️ 漫步旅人！放慢腳步享受風景，就算沒有拿滿分，也是一趟美好的旅程！";
+            } else {
+                if (elapsed <= 60) finalEval = "🌪️ 旋風過境！太急著破關了吧？下次可以放慢腳步欣賞森林喔！";
+                else if (elapsed <= 120) finalEval = "🌱 充滿活力！積極嘗試各種線索，展現了滿滿的好奇心與熱情！";
+                else if (elapsed <= 240) finalEval = "🍄 迷途小鹿！在森林裡小小迷路了，但依然努力走完了全程，精神可嘉！";
+                else finalEval = "🐌 慢活大師！分數與時間都是浮雲，最重要的是享受這段平靜的療癒時光！";
+            }
+
+            document.getElementById('cert-content').innerHTML = `
+                <div>玆證明 探索家： <strong style="color:var(--accent); font-size:1.3rem;">${playerName}</strong></div>
+                <div>於西元${new Date().getFullYear()}年「森之尋字」挑戰中圓滿過關！</div><br>
+                <div>⏱️ 探索耗時：<strong style="color:var(--primary);">${finalMins} 分 ${finalSecs} 秒</strong></div>
+                <div>🎯 尋獲夥伴：<strong style="color:var(--primary);">${foundWords.size} / ${wordsData.length} 位</strong></div>
+                <div>🏆 榮譽積分：<strong style="color:var(--primary);">${score} / ${maxScore} 分</strong></div>
+                <div style="margin-top: 15px; color: var(--wood); font-weight:bold;">💮 探索評價：${finalEval}</div>`;
+            document.getElementById('cert-modal').style.display = 'flex';
+        }
+
+        window.copyCertificate = function() {
+            const rawText =
+`🌸【森之尋字 ‧ 探索合格成績證明】🌸
+=======================================
+玆證明 探索家： ${playerName}
+於西元${new Date().getFullYear()}年「森之尋字」挑戰中圓滿過關！
+
+⏱️ 探索耗時：${finalMins} 分 ${finalSecs} 秒
+🎯 尋獲夥伴：${foundWords.size} / ${wordsData.length} 位全部找齊
+🏆 榮譽積分：${score} / ${maxScore} 分
+💮 探索評價：${finalEval}
+
+發證單位：小綜森之尋字療癒委員會
+=======================================
+感謝您參與的每一步！🌳`;
+            navigator.clipboard.writeText(rawText).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const origText = btn.textContent;
+                btn.textContent = "✅ 已成功複製！";
+                btn.style.backgroundColor = "var(--primary)";
+                setTimeout(() => { btn.textContent = origText; btn.style.backgroundColor = "var(--wood)"; }, 2000);
+            }).catch(() => { alert("複製失敗，請手動選取文字複製！"); });
+        }
+
+        window.showZongziModal = function() {
+            document.getElementById('cert-modal').style.display = 'none';
+            document.getElementById('zongzi-modal').style.display = 'flex';
+            const container = document.getElementById('zongzi-container');
+            container.innerHTML = '';
+            const zongziStyles = [
+                '<svg class="cute-zongzi" viewBox="0 0 100 100"><polygon points="50,10 90,80 10,80" fill="#4CAF50"/><polygon points="50,10 70,80 30,80" fill="#388E3C"/><circle cx="40" cy="60" r="4" fill="#333"/><circle cx="60" cy="60" r="4" fill="#333"/><path d="M45,70 Q50,75 55,70" stroke="#333" stroke-width="2" fill="transparent"/><rect x="40" y="40" width="20" height="5" fill="#FFC107" transform="rotate(-15 50 40)"/></svg>',
+                '<svg class="cute-zongzi" viewBox="0 0 100 100"><polygon points="50,15 85,85 15,85" fill="#8BC34A"/><polygon points="50,15 75,85 25,85" fill="#689F38"/><circle cx="40" cy="65" r="5" fill="#333"/><circle cx="60" cy="65" r="5" fill="#333"/><circle cx="50" cy="75" r="4" fill="#FF5252"/><rect x="35" y="45" width="30" height="4" fill="#D32F2F" transform="rotate(10 50 45)"/></svg>',
+                '🐉', '🥟', '🎋'
+            ];
+            for (let i = 0; i < 40; i++) {
+                let zongzi = document.createElement('div');
+                zongzi.className = 'zongzi-item';
+                zongzi.innerHTML = zongziStyles[Math.floor(Math.random() * zongziStyles.length)];
+                zongzi.style.left = (Math.random() * 90) + 'vw';
+                zongzi.style.animationDuration = (2 + Math.random() * 3) + 's';
+                zongzi.style.animationDelay = (Math.random() * 2) + 's';
+                zongzi.style.transform = `scale(${0.5 + Math.random()})`;
+                container.appendChild(zongzi);
+            }
+            setTimeout(() => {
+                document.getElementById('zongzi-modal').style.opacity = '0';
+                setTimeout(() => { document.getElementById('zongzi-modal').style.display = 'none'; }, 1000);
+                document.getElementById('game-container').style.opacity = '0';
+                document.getElementById('main-title').style.opacity = '0';
+                document.getElementById('game-subtitle').style.opacity = '0';
+                document.getElementById('stats-bar').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('game-container').style.display = 'none';
+                    document.getElementById('main-title').style.display = 'none';
+                    document.getElementById('game-subtitle').style.display = 'none';
+                    document.getElementById('stats-bar').style.display = 'none';
+                    document.getElementById('final-farewell').style.display = 'block';
+                }, 1000);
+            }, 8000);
+        }
+    </script>
+</body>
+</html>
